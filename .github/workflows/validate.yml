@@ -6,7 +6,7 @@ on:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
-  workflow_dispatch: # This enables the manual "Run workflow" button from your instructions
+  workflow_dispatch:
 
 jobs:
   validate:
@@ -24,13 +24,15 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ secrets.AWS_REGION }}
 
-    # This loops through all .yaml or .json files to validate your CloudFormation syntax
     - name: Validate CloudFormation Templates
       run: |
         echo "Searching for CloudFormation templates..."
-        for file in $(find . -name "*.yaml" -o -name "*.yml" -o -name "*.json" | grep -v ".github"); do
-          if grep -q "AWSTemplateFormatVersion" "$file"; then
+        # If no cloudformation files exist yet, this prevents the script from failing early
+        shopt -s globstar nullglob
+        for file in **/*.yaml **/*.yml **/*.json; do
+          if [[ "$file" != .github* ]] && grep -q "AWSTemplateFormatVersion" "$file"; then
             echo "Validating $file..."
             aws cloudformation validate-template --template-body "file://$file"
           fi
         done
+        echo "Validation pass completed."
